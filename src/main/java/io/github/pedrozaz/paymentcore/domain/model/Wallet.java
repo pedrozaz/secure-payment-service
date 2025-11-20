@@ -21,6 +21,8 @@ public class Wallet {
 
     public UUID getId() { return id; }
     public BigDecimal getBalance() { return balance; }
+    public UUID getUserId() { return userId; }
+    public String getDocument() { return document; }
 
     public void debit(BigDecimal amount) {
         if (this.balance.compareTo(amount) < 0) {
