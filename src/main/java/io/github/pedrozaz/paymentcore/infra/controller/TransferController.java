@@ -6,10 +6,7 @@ import io.github.pedrozaz.paymentcore.infra.controller.dto.TransferRequest;
 import io.github.pedrozaz.paymentcore.infra.controller.dto.TransferResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/transfers")
@@ -22,12 +19,15 @@ public class TransferController {
     }
 
     @PostMapping
-    public ResponseEntity<TransferResponse> transfer(@RequestBody @Valid TransferRequest request) {
+    public ResponseEntity<TransferResponse> transfer(
+            @RequestBody @Valid TransferRequest request,
+            @RequestHeader("Idempotency-Key") String idempotencyKey) {
 
         Transaction transaction = transferUseCase.transfer(
                 request.payerId(),
                 request.payeeId(),
-                request.amount()
+                request.amount(),
+                idempotencyKey
         );
 
         TransferResponse response = new TransferResponse(

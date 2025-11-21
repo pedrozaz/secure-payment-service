@@ -1,5 +1,6 @@
 package io.github.pedrozaz.paymentcore.application.usecase;
 
+import io.github.pedrozaz.paymentcore.application.gateway.TransactionGateway;
 import io.github.pedrozaz.paymentcore.application.gateway.WalletGateway;
 import io.github.pedrozaz.paymentcore.domain.exception.WalletException;
 import io.github.pedrozaz.paymentcore.domain.model.Transaction;
@@ -16,32 +17,41 @@ import java.util.UUID;
 public class TransferUseCase {
 
     private final WalletGateway walletGateway;
+    private final TransactionGateway transactionGateway;
 
-    public  TransferUseCase(WalletGateway walletGateway) {
+    public  TransferUseCase(WalletGateway walletGateway, TransactionGateway transactionGateway) {
         this.walletGateway = walletGateway;
+        this.transactionGateway = transactionGateway;
     }
 
     @Transactional
-    public Transaction transfer(UUID payerId, UUID payeeId, BigDecimal amount) {
-        Wallet payer = walletGateway.findById(payerId)
-                .orElseThrow(() -> new WalletException("Payer wallet not found"));
+    public Transaction transfer(UUID payerId, UUID payeeId, BigDecimal amount, String idempotencyKey) {
+        Transaction existingTransaction = transactionGateway.findByIdempotencyKey(idempotencyKey);
+        if (existingTransaction != null) {
+            return  existingTransaction;
+        }
 
+        Wallet payer = walletGateway.findById(payerId)
+                .orElseThrow(() -> new WalletException("Payer not found"));
         Wallet payee = walletGateway.findById(payeeId)
-                .orElseThrow(() -> new WalletException("Payee wallet not found"));
+                .orElseThrow(() -> new WalletException("Payee not found"));
 
         payer.debit(amount);
-        payee.credit(amount);
+        payee.debit(amount);
 
         walletGateway.save(payer);
         walletGateway.save(payee);
 
-        return new Transaction(
+        Transaction newTransaction = new Transaction(
                 UUID.randomUUID(),
                 payer.getId(),
                 payee.getId(),
                 amount,
                 TransactionStatus.COMPLETED,
+                idempotencyKey,
                 LocalDateTime.now()
         );
+
+        return transactionGateway.create(newTransaction);
     }
 }

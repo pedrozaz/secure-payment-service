@@ -10,6 +10,7 @@ public record Transaction(
         UUID payeeWalletId,
         BigDecimal amount,
         TransactionStatus status,
+        String idempotencyKey,
         LocalDateTime createdAt
 ) {
 }
